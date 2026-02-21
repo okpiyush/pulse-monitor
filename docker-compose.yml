@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+
+  backend:
+    build: ./backend
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - ./backend:/app
+    env_file:
+      - .env.docker
+    depends_on:
+      - redis
+
+  worker:
+    build: ./backend
+    command: celery -A core worker -l info -n worker1@%h
+    volumes:
+      - ./backend:/app
+    env_file:
+      - .env.docker
+    depends_on:
+      - redis
+
+  beat:
+    build: ./backend
+    command: celery -A core beat -l info
+    volumes:
+      - ./backend:/app
+    env_file:
+      - .env.docker
+    depends_on:
+      - redis
+
+  flower:
+    build: ./backend
+    command: celery -A core flower
+    ports:
+      - "5555:5555"
+    env_file:
+      - .env.docker
+    depends_on:
+      - redis
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+# Note: Using SQLite file inside the ./backend volume for persistence.
+# No Postgres service defined here to avoid conflicts with your local database.

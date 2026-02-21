@@ -1,0 +1,47 @@
+# Django
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+pathname2url.py
+__pycache__/
+*.py[cod]
+*$py.class
+media/
+static/
+.env*
+
+# Node
+node_modules/
+dist/
+dist-ssr/
+*.local
+.eslintcache
+.stylelintcache
+.prettiercache
+
+# Docker
+.dockerignore
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv/
+
+# Development
+worker.log
+beat.log
+.idea/
+.vscode/
+*.swp
+*.bak
