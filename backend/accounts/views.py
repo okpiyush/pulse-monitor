@@ -10,14 +10,51 @@ User = get_user_model()
 
 
 class UserSerializer(serializers.ModelSerializer):
+    accessible_websites = serializers.PrimaryKeyRelatedField(
+        many=True, 
+        read_only=True
+    )
+    
+    # We use this for writing assignments
+    monitor_access = serializers.ListField(
+        child=serializers.IntegerField(),
+        write_only=True,
+        required=False
+    )
+
     class Meta:
         model = User
-        fields = ['id', 'username', 'password', 'is_master', 'is_staff']
+        fields = ['id', 'username', 'password', 'is_master', 'is_staff', 'can_view_system_health', 'can_view_crashlytics', 'accessible_websites', 'monitor_access']
         extra_kwargs = {'password': {'write_only': True}}
 
     def create(self, validated_data):
+        monitor_access = validated_data.pop('monitor_access', [])
         user = User.objects.create_user(**validated_data)
+        if monitor_access:
+            from monitor.models import Website
+            websites = Website.objects.filter(id__in=monitor_access)
+            user.accessible_websites.set(websites)
         return user
+
+    def update(self, instance, validated_data):
+        monitor_access = validated_data.pop('monitor_access', None)
+        password = validated_data.pop('password', None)
+        
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+            
+        if password:
+            instance.set_password(password)
+        
+        instance.save()
+        
+        if monitor_access is not None:
+            from monitor.models import Website
+            websites = Website.objects.filter(id__in=monitor_access)
+            instance.accessible_websites.set(websites)
+            
+        return instance
+
 
 class IsMasterUser(permissions.BasePermission):
     def has_permission(self, request, view):

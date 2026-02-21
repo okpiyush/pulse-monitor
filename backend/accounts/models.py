@@ -6,6 +6,8 @@ class User(AbstractUser):
     Custom User model for the Uptime Monitor.
     """
     is_master = models.BooleanField(default=False)
+    can_view_system_health = models.BooleanField(default=False)
+    can_view_crashlytics = models.BooleanField(default=False)
 
     def __str__(self):
         return self.username

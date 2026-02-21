@@ -6,11 +6,10 @@ services:
 
   backend:
     build: ./backend
-    command: >
-      sh -c "python manage.py migrate &&
-             python manage.py runserver 0.0.0.0:8000"
+    # Entrypoint script handles migrations and superuser
+    command: python manage.py runserver 0.0.0.0:8000
     volumes:
-      - ./backend:/app
+      - sqlite_data:/app/data
     env_file:
       - .env.docker
     depends_on:
@@ -18,9 +17,10 @@ services:
 
   worker:
     build: ./backend
+    # Entrypoint handles setup, then runs worker
     command: celery -A core worker -l info -n worker1@%h
     volumes:
-      - ./backend:/app
+      - sqlite_data:/app/data
     env_file:
       - .env.docker
     depends_on:
@@ -28,9 +28,10 @@ services:
 
   beat:
     build: ./backend
+    # Entrypoint handles setup, then runs beat
     command: celery -A core beat -l info
     volumes:
-      - ./backend:/app
+      - sqlite_data:/app/data
     env_file:
       - .env.docker
     depends_on:
@@ -41,6 +42,8 @@ services:
     command: celery -A core flower
     ports:
       - "5555:5555"
+    volumes:
+      - sqlite_data:/app/data
     env_file:
       - .env.docker
     depends_on:
@@ -53,5 +56,5 @@ services:
     depends_on:
       - backend
 
-# Note: Using SQLite file inside the ./backend volume for persistence.
-# No Postgres service defined here to avoid conflicts with your local database.
+volumes:
+  sqlite_data:

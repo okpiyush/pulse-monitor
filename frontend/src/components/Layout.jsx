@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Activity, LayoutDashboard, Settings, LogOut, ShieldCheck, Menu, X } from 'lucide-react';
+import { Activity, LayoutDashboard, Settings, LogOut, ShieldCheck, Menu, X, Cpu, ServerCrash } from 'lucide-react';
 
 const NavItem = ({ to, icon: Icon, children, onClick }) => (
     <NavLink
@@ -40,6 +40,12 @@ const Layout = ({ children }) => {
 
             <nav className="flex-1 space-y-2">
                 <NavItem to="/dashboard" icon={LayoutDashboard} onClick={() => setIsMobileMenuOpen(false)}>Dashboard</NavItem>
+                {(user?.is_master || user?.can_view_system_health) && (
+                    <NavItem to="/health" icon={Cpu} onClick={() => setIsMobileMenuOpen(false)}>System Health</NavItem>
+                )}
+                {(user?.is_master || user?.can_view_crashlytics) && (
+                    <NavItem to="/crashlytics" icon={ServerCrash} onClick={() => setIsMobileMenuOpen(false)}>Crashlytics</NavItem>
+                )}
                 {user?.is_master && (
                     <NavItem to="/admin" icon={ShieldCheck} onClick={() => setIsMobileMenuOpen(false)}>Admin Panel</NavItem>
                 )}

@@ -124,4 +124,8 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'monitor.tasks.dispatch_all_checks',
         'schedule': 60.0, # Every 60 seconds
     },
+    'check-system-health-every-minute': {
+        'task': 'monitor.tasks.check_system_health',
+        'schedule': 60.0, # Every 60 seconds
+    }
 }

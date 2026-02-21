@@ -20,9 +20,14 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy project
 COPY . /app/
+RUN mkdir -p /app/data
+RUN chmod +x /app/docker-entrypoint.sh
 
 # Expose port
 EXPOSE 8000
 
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
+
 # Start server
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+
