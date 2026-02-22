@@ -4,13 +4,15 @@ from celery import shared_task
 from django.utils import timezone
 from django.core.mail import send_mail
 from django.conf import settings
-from django.conf import settings
 from .models import Website, MonitorLog, Incident, SystemConfig, SystemSnapshot
 from datetime import timedelta
 import os
 import psutil
 import json
 import redis
+import logging
+
+logger = logging.getLogger(__name__)
 def take_system_snapshot(title, reason, website_id=None, incident_id=None, response_time=None):
     try:
         cpu = psutil.cpu_percent(interval=None)
@@ -43,7 +45,10 @@ def check_website(website_id):
     try:
         website = Website.objects.get(id=website_id)
     except Website.DoesNotExist:
+        logger.error(f"Task received for non-existent website ID: {website_id}")
         return
+
+    logger.info(f"Starting check for {website.name} ({website.url})")
 
     start_time = time.time()
     ttfb = None
@@ -141,6 +146,7 @@ def check_website(website_id):
 
     # Dynamic Polling: If failing, check again in failure_poll_interval seconds
     if not is_success or website.current_status == 'down':
+        logger.info(f"Website {website.name} is DOWN or failing. Scheduling next check in {website.failure_poll_interval}s")
         # Schedule next check in failure_poll_interval seconds
         check_website.apply_async(args=[website.id], countdown=website.failure_poll_interval)
 
@@ -165,21 +171,28 @@ def send_alert(website, level, message):
 @shared_task
 def dispatch_all_checks():
     now = timezone.now()
-    # We only dispatch "fresh" checks for websites that aren't already in deep failure 
-    # (because failed websites are self-scheduling via apply_async countdown)
     websites = Website.objects.filter(is_active=True)
+    
     for website in websites:
-        if website.current_status == 'up' or not website.last_check_time:
-            is_due = False
-            if not website.last_check_time:
-                is_due = True
+        is_due = False
+        
+        if not website.last_check_time:
+            is_due = True
+        else:
+            elapsed = (now - website.last_check_time).total_seconds()
+            
+            # If status is down, use failure_poll_interval (seconds)
+            if website.current_status == 'down':
+                if elapsed >= website.failure_poll_interval:
+                    is_due = True
+            # If status is up or pending, use check_interval (minutes)
             else:
-                elapsed = (now - website.last_check_time).total_seconds()
                 if elapsed >= (website.check_interval * 60):
                     is_due = True
-            
-            if is_due:
-                check_website.delay(website.id)
+        
+        if is_due:
+            logger.info(f"Dispatching check for {website.name} (Status: {website.current_status})")
+            check_website.delay(website.id)
 
 @shared_task
 def check_system_health():
